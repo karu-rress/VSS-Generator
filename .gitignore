@@ -1,0 +1,8 @@
+__pycache__/
+output/
+
+# ignore all json (output) files
+*.json
+
+# except for original vss file
+!vss_rel_4.2.json
