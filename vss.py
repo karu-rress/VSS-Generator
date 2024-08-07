@@ -1,7 +1,14 @@
+#
+# vss.py
+#
+# VSS JSON manager class
+#
+
 import json
 import jsonpatch
 import random
 from typing import Generator, Any
+from pathlib import Path
 
 class vss_json:
     """VSS JSON manager class"""
@@ -86,7 +93,6 @@ class vss_json:
         :param dataset_size: Dataset size ratio [0.0, 1.0]
         """
         result = {}
-        
         for leaf, parent in self.leaf_nodes():
             # !! only add the node by dataset_size
             if random.random() > dataset_size:
@@ -137,7 +143,12 @@ class vss_json:
                     
         return vss_json(data=result), vss_json(data=jsonpatch.make_patch({}, result).patch)
     
-    def generate_next(self, change_rate) -> tuple['vss_json', 'vss_json']:
+    def generate_next(self, change_rate: float) -> tuple['vss_json', 'vss_json']:
+        """
+        Generate a new dataset based on the current dataset
+
+        :param change_rate: Change rate for each dataset
+        """
         assert self.initialized, 'vss_json must be initialized with generate()'
         
         result = {}
@@ -170,7 +181,11 @@ class vss_json:
                     current[node] = random.random() * 100
         return vss_json(data=result), vss_json(data=jsonpatch.make_patch(self.data, result).patch)
     
-    def save(self, file: str) -> None:
-        """Save JSON data to file"""
+    def save(self, file: str | Path) -> None:
+        """
+        Save JSON data to file
+        
+        :param file: File path to save
+        """
         with open(file, 'w') as f:
             json.dump(self.data, f, indent=4)

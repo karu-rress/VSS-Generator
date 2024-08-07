@@ -1,10 +1,18 @@
+#
+# generate.py
+#
+# Generates a JSON / JSON patch dataset of cars
+# using the VSS dataset.
+#
+
 import os
 import shutil
 import argparse
 from tqdm import tqdm
+from pathlib import Path
 from vss import vss_json
 
-OUTPUT_DIR = './output'
+OUTPUT_DIR = Path('./output')
 
 def main(args):
     print('Running with arguments:')
@@ -15,34 +23,43 @@ def main(args):
     print('--size:', args.size, end='\n\n')
     
     # Remove output directory if it exists
-    if os.path.exists(OUTPUT_DIR) and os.path.isdir(OUTPUT_DIR):
+    print('Checking for existing output directory...', end='', flush=True)
+    if OUTPUT_DIR.exists() and OUTPUT_DIR.is_dir():
+        print('\nDirectory found. Removing...', end='', flush=True)
         shutil.rmtree(OUTPUT_DIR)
-        print(f'Removed existing output directory.\n')
-        
+        print('removed successfully.\n')
+    else:
+        print('not found.\n')
+    
+    # Generate dataset
     print(f'Generating {args.n_cars} cars with {args.n_files} files each...')
     vss = vss_json(file=args.dataset)
     
-    total_iterations = args.n_cars * (args.n_files - 1)
-    with tqdm(total=total_iterations, desc='Progress') as pbar:
+    with tqdm(total=args.n_cars*args.n_files, desc='Progress') as pbar:
         for i in range(1, args.n_cars + 1):
             # Create directories
-            if not os.path.exists(f'{OUTPUT_DIR}/car_{i}'):
-                os.makedirs(f'{OUTPUT_DIR}/car_{i}')
-            if not os.path.exists(f'{OUTPUT_DIR}/car_{i}/patches'):
-                os.makedirs(f'{OUTPUT_DIR}/car_{i}/patches')
+            car_dir = OUTPUT_DIR / f'car_{i}'
+            patch_dir = OUTPUT_DIR / f'car_{i}/patches'
+
+            if not car_dir.exists():
+                car_dir.mkdir(parents=True)
+            if not patch_dir.exists():
+                patch_dir.mkdir(parents=True)
                 
-            # Generate first data and patch
+            # Generate first (randomized) data and patch
             data, patch = vss.generate(args.size)
-            data.save(f'{OUTPUT_DIR}/car_{i}/{i}_1.json')
-            patch.save(f'{OUTPUT_DIR}/car_{i}/patches/{i}_1.json')
-            
+            data.save(car_dir / f'{i}_1.json')
+            patch.save(patch_dir / f'{i}_1.json')
+            pbar.update(1)
+
             # Generate the rest of the files
             for j in range(2, args.n_files + 1):
                 data, patch = data.generate_next(args.change_rate)
-                data.save(f'{OUTPUT_DIR}/car_{i}/{i}_{j}.json')
-                patch.save(f'{OUTPUT_DIR}/car_{i}/patches/{i}_{j}.json')
+                data.save(car_dir / f'{i}_{j}.json')
+                patch.save(patch_dir / f'{i}_{j}.json')
                 pbar.update(1)
-            pbar.update(1)
+
+    print(f'Saved to {OUTPUT_DIR.absolute()}! Exiting...')
             
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
