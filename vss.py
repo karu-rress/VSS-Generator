@@ -1,5 +1,7 @@
 import json
+import jsonpatch
 import random
+from typing import Generator, Any
 
 class vss_json:
     """VSS JSON manager class"""
@@ -13,7 +15,7 @@ class vss_json:
             - data: JSON data (for internal use)
         """
         assert 'file' in kwargs or 'data' in kwargs
-        self.initialized = False        
+        self.initialized: bool = False        
         
         if 'file' in kwargs:
             with open(kwargs['file'], 'r') as f:
@@ -45,7 +47,7 @@ class vss_json:
                 if key in leaf:
                     del leaf[key]
             
-    def leaf_nodes(self, data=None, parent_key=''):
+    def leaf_nodes(self, data=None, parent_key: str='') -> Generator[tuple[Any, str], None, None]:
         """
         Traverse and yield all leaf values (dict/scaler) in JSON data
         
@@ -77,7 +79,7 @@ class vss_json:
                 yield data, parent_key
                 
     
-    def generate(self, dataset_size: float=1.0) -> 'vss_json':
+    def generate(self, dataset_size: float=1.0) -> tuple['vss_json', 'vss_json']:
         """
         Generate an initial random dataset based on the JSON schema
         
@@ -130,14 +132,12 @@ class vss_json:
                 new[node] = random.randint(0, 100)
             elif dtype == 'uint8[]':
                 new[node] = []
-                for i in range(random.randint(1, 5)):
+                for _ in range(random.randint(1, 5)):
                     new[node].append(random.randint(0, 100))
                     
-            # step 3: set the leaf
-        
-        return vss_json(data=result)
+        return vss_json(data=result), vss_json(data=jsonpatch.make_patch({}, result).patch)
     
-    def generate_next(self, change_rate):
+    def generate_next(self, change_rate) -> tuple['vss_json', 'vss_json']:
         assert self.initialized, 'vss_json must be initialized with generate()'
         
         result = {}
@@ -168,7 +168,7 @@ class vss_json:
                     current[node] = random.randint(0, 100)
                 case float():
                     current[node] = random.random() * 100
-        return vss_json(data=result)
+        return vss_json(data=result), vss_json(data=jsonpatch.make_patch(self.data, result).patch)
     
     def save(self, file: str) -> None:
         """Save JSON data to file"""
